@@ -44,35 +44,55 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    // loop through all the results and make a socket
-    for(p = servinfo; p != NULL; p = p->ai_next) {
+    // Loop through all the results and connect to the first we can
+    for (p = servinfo; p != NULL; p = p->ai_next) {
         if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
         }
 
-        break;
+        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            continue;
+        }
+
+        break;  // If we get here, we have successfully connected
     }
 
     if (p == NULL) {
-        fprintf(stderr, "talker: failed to create socket\n");
+        fprintf(stderr, "ERROR: CANT CONNECT TO %s\n", Desthost);
         return -1;
     }
 
     freeaddrinfo(servinfo);
 
-    // Connect to the server
-    if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+
+    // Receive the protocol information from the server
+    memset(buf, 0, sizeof buf);
+    int numbytes;
+    if ((numbytes = recv(sockfd, buf, BUFFER_SIZE-1, 0)) == -1) {
+        perror("recv");
+        exit(1);
+    }
+
+    buf[numbytes] = '\0'; // Null-terminate the received data
+
+#ifdef DEBUG 
+    printf("Received: %s", buf);
+#endif
+
+    // Check for supported protocols
+    if (strstr(buf, "TEXT TCP 1.0") != NULL || strstr(buf, "TEXT TCP 1.1") != NULL) {
+        // If protocol is supported, send "OK"
+        if (send(sockfd, "OK\n", 3, 0) == -1) {
+            perror("send");
+            exit(1);
+        }
+    } else {
+        // Protocol mismatch
+        fprintf(stderr, "ERROR: MISMATCH PROTOCOL\n");
         close(sockfd);
-        fprintf(stderr, "talker: failed to connect\n");
         return -1;
     }
 
-
-
-
-#ifdef DEBUG 
-    printf("Host %s, and port %d.\n",Desthost,port);
-#endif
-
-  
+  close(sockfd);
 }
