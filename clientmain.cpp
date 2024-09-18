@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
         }
     } else {
         // If the data doesn't match any known protocol, it's unexpected (likely CHARGEN stream)
-        fprintf(stderr, "ERROR\n");
+        printf("ERROR: MISSMATCH PROTOCOL\n");
         close(sockfd);
         return -1;
     }
