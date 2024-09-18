@@ -22,35 +22,71 @@
 // Included to get the support library
 #include <calcLib.h>
 
-
-
 int main(int argc, char *argv[]){
 
     if (argc != 2) {
-        printf("Usage: %s <IP> <Port>\n", argv[0]);
+        printf("Usage: %s <IP:Port>\n", argv[0]);
         return -1;
     }
 
-    char delim[]=":";
-    char *Desthost=strtok(argv[1],delim);
-    char *Destport=strtok(NULL,delim);
+    // Split the input into IP/Host and Port
+    char delim[] = ":";
+    char *Desthost = strtok(argv[1], delim);
+    char *Destport = strtok(NULL, delim);
 
-    int port=atoi(Destport);
+    // Check if the port was provided correctly
+    if (Destport == NULL) {
+        printf("Error: Port number is missing.\n");
+        return -1;
+    }
+
+    int port = atoi(Destport);
+    if (port <= 0) {
+        printf("Error: Invalid port number.\n");
+        return -1;
+    }
 
     struct addrinfo hints, *servinfo, *p;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;      // Allow both IPv4 and IPv6
     hints.ai_socktype = SOCK_STREAM;  // TCP stream sockets
 
-    getaddrinfo(Desthost, Destport, &hints, &servinfo);
-    int socket_desc;
-
-    for (p = servinfo; p != NULL; p = p->ai_next) {
-        socket_desc = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        connect(socket_desc, p->ai_addr, p->ai_addrlen);
+    // Get address info and check for errors
+    int rv;
+    if ((rv = getaddrinfo(Desthost, Destport, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return -1;
     }
 
+    int socket_desc;
+    int connected = 0;
+
+    // Loop through all the results and try to connect to one
+    for (p = servinfo; p != NULL; p = p->ai_next) {
+        socket_desc = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        
+        if (socket_desc < 0) {
+            perror("Error creating socket");
+            continue;  // Try the next result
+        }
+
+        if (connect(socket_desc, p->ai_addr, p->ai_addrlen) == 0) {
+            printf("Connected successfully to %s on port %d\n", Desthost, port);
+            connected = 1;
+            break;  // Exit loop after successful connection
+        } else {
+            perror("Error connecting");
+            close(socket_desc);
+        }
+    }
+
+    // Free the linked list returned by getaddrinfo
     freeaddrinfo(servinfo);
+
+    if (!connected) {
+        printf("Error: Unable to connect to the server.\n");
+        return -1;
+    }
 
 
     // Buffer to hold the server's response
