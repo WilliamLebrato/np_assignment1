@@ -75,7 +75,7 @@ int main(int argc, char *argv[]){
             connected = 1;
             break;  // Exit loop after successful connection
         } else {
-            perror("Error connecting");
+            printf("ERROR: CANT CONNECT TO %s on port %d\n", Desthost, port);
             close(socket_desc);
         }
     }
@@ -121,7 +121,8 @@ int main(int argc, char *argv[]){
 
         if (supported_protocol == 0) 
         {
-            printf("ERROR: No supported protocol found\n");
+            printf("ERROR: MISSMATCH PROTOCOL\n");
+            close(socket_desc);
             return -1;
         }
     } 
