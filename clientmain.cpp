@@ -9,7 +9,7 @@
 // Enable if you want debugging to be printed, see examble below.
 // Alternative, pass CFLAGS=-DDEBUG to make, make CFLAGS=-DDEBUG
 #define DEBUG
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 64
 
 
 // gcc -o np_assignment1/clientmain np_assignment1/clientmain.cpp -I. -L. -lcalc
@@ -79,30 +79,28 @@ int main(int argc, char *argv[]){
     int numbytes;
     if ((numbytes = recv(sockfd, buf, BUFFER_SIZE - 1, 0)) == -1) {
         perror("recv");
-        exit(1);
+        close(sockfd); // Ensure the socket is closed on error
+        return -1; // Return with error status
     }
 
     buf[numbytes] = '\0'; // Null-terminate the received data
 
-    #ifdef DEBUG
-        printf("Received: %s", buf);
-    #endif
-
-    // Check if the data contains one of the expected protocols
+    // Check if the received data contains one of the expected protocols
     if (strstr(buf, "TEXT TCP 1.0") != NULL || strstr(buf, "TEXT TCP 1.1") != NULL) {
-        // If protocol is supported, send "OK"
+        // If protocol is supported, send "OK\n"
         if (send(sockfd, "OK\n", 3, 0) == -1) {
             perror("send");
-            exit(1);
+            close(sockfd); // Ensure the socket is closed on error
+            return -1; // Return with error status
         }
     } else {
-        // If the data doesn't match any known protocol, it's unexpected (likely CHARGEN stream)
-        printf("ERROR: MISSMATCH PROTOCOL\n");
-        close(sockfd);
-        return -1;
+        // If the data doesn't match any known protocol, print the specified error message and exit
+        printf("ERROR\n"); // Simplified to match the expected output precisely
+        close(sockfd); // Close the socket before exiting
+        return -1; // Return with error status indicating failure to match protocol
     }
 
-    // After sending "OK\n" for the protocol, we now receive the next message from the server
+
     memset(buf, 0, sizeof buf);  // Clear the buffer
     if ((numbytes = recv(sockfd, buf, BUFFER_SIZE-1, 0)) == -1) {
         perror("recv");
