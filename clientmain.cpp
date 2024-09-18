@@ -85,19 +85,19 @@ int main(int argc, char *argv[]){
 
     buf[numbytes] = '\0'; // Null-terminate the received data
 
-    // Check if the received data contains one of the expected protocols
-    if (strstr(buf, "TEXT TCP 1.0") != NULL || strstr(buf, "TEXT TCP 1.1") != NULL) {
-        // If protocol is supported, send "OK\n"
-        if (send(sockfd, "OK\n", 3, 0) == -1) {
+    if (strstr(buf, "TEXT TCP 1.0") == NULL && strstr(buf, "TEXT TCP 1.1") == NULL) {
+        printf("ERROR\n");  // Match expected output
+        close(sockfd);      // Close the socket immediately
+        return 1;           // Exit the client to avoid timeout
+    }
+    else
+    {
+        if (send(sockfd, "OK\n", 3, 0) == -1) 
+        {
             perror("send");
             close(sockfd); // Ensure the socket is closed on error
             return -1; // Return with error status
         }
-    } else {
-        // If the data doesn't match any known protocol, print the specified error message and exit
-        printf("ERROR\n"); // Simplified to match the expected output precisely
-        close(sockfd); // Close the socket before exiting
-        return -1; // Return with error status indicating failure to match protocol
     }
 
 
