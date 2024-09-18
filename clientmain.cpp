@@ -7,9 +7,9 @@
 #include <unistd.h>  
 #include <netdb.h>   
 
-// gcc -o clientmain clientmain.cpp -I. -L. -lcalc
+// gcc -o np_assignment1/clientmain np_assignment1/clientmain.cpp -I. -L. -lcalc
 
-// ./clientmain 13.53.76.30:5000
+// ./np_assignment1/clientmain 13.53.76.30:5000
 
 
 /* You will to add includes here */
@@ -21,6 +21,8 @@
 
 // Included to get the support library
 #include <calcLib.h>
+
+
 
 int main(int argc, char *argv[]){
 
@@ -35,28 +37,20 @@ int main(int argc, char *argv[]){
 
     int port=atoi(Destport);
 
-    // Create socket:
-    int socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-    
-    if(socket_desc < 0){
-        printf("Unable to create socket\n");
-        return -1;
+    struct addrinfo hints, *servinfo, *p;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;      // Allow both IPv4 and IPv6
+    hints.ai_socktype = SOCK_STREAM;  // TCP stream sockets
+
+    getaddrinfo(Desthost, Destport, &hints, &servinfo);
+    int socket_desc;
+
+    for (p = servinfo; p != NULL; p = p->ai_next) {
+        socket_desc = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        connect(socket_desc, p->ai_addr, p->ai_addrlen);
     }
 
-    printf("Socket created\n");
-
-    struct sockaddr_in server;
-    server.sin_addr.s_addr = inet_addr(Desthost);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(port);
-
-    // Connect to remote server
-    if(connect(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0){
-        printf("connect error\n");
-        return 1;
-    }
-
-    printf("Connected\n");
+    freeaddrinfo(servinfo);
 
 
     // Buffer to hold the server's response
