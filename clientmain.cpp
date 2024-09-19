@@ -108,6 +108,8 @@ int main(int argc, char *argv[]){
         return -1;
     }
 
+    printf("ASSIGNMENT: %s", buf); // buf contains the assignment string
+
     buf[numbytes] = '\0'; // Null-terminate the received data
 
     char operation[10];  // Declare a buffer for operation
@@ -164,6 +166,18 @@ int main(int argc, char *argv[]){
     char result_str[50];
     snprintf(result_str, sizeof(result_str), "%8.8g\n", result_f);
     send(sockfd, result_str, strlen(result_str), 0);
+
+    // Receive the server's response
+    memset(buf, 0, sizeof buf);
+    if ((numbytes = recv(sockfd, buf, BUFFER_SIZE - 1, 0)) == -1) {
+        perror("recv");
+        close(sockfd);
+        return -1;
+    }
+    buf[numbytes] = '\0'; // Null-terminate the received data
+
+    // Present the server's response to the user
+    printf("%s", buf);
 
   close(sockfd);
 }
