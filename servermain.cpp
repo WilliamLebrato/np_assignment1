@@ -16,7 +16,15 @@
 
 
 using namespace std;
-
+struct assignment {
+    int int1;             // First integer value
+    int int2;             // Second integer value
+    float float1;         // First floating-point value
+    float float2;         // Second floating-point value
+    char operation[4];    // Operation (e.g., "add", "fdiv")
+    int int_result;       // Result for integer operations
+    float float_result;   // Result for floating-point operations
+};
 // Function to generate a random assignment
 void generate_assignment(struct assignment *task) {
     // List of possible operations
@@ -93,15 +101,7 @@ const char* check_task(struct assignment *task, char *client_response) {
     }
 }
 
-struct assignment {
-    int int1;             // First integer value
-    int int2;             // Second integer value
-    float float1;         // First floating-point value
-    float float2;         // Second floating-point value
-    char operation[4];    // Operation (e.g., "add", "fdiv")
-    int int_result;       // Result for integer operations
-    float float_result;   // Result for floating-point operations
-};
+
 
 int main(int argc, char *argv[]){
   
