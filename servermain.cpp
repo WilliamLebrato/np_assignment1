@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <math.h> // Required for floating-point comparison
 #include <time.h>
+#include <errno.h>
 
 // Enable if you want debugging to be printed, see examble below.
 // Alternative, pass CFLAGS=-DDEBUG to make, make CFLAGS=-DDEBUG
@@ -119,32 +120,55 @@ int main(int argc, char *argv[]){
   printf("Host %s, and port %d.\n",Desthost,port);
 #endif
 
-// Implement the socket
-  int sockfd = socket(AF_UNSPEC,SOCK_STREAM, 0);
+  struct addrinfo hints, *res;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;        // Allow IPv4 or IPv6
+  hints.ai_socktype = SOCK_STREAM;    // TCP stream sockets
+  hints.ai_flags = AI_PASSIVE;        // All available interfaces
+
+  // Get address info for the provided IP and port
+  if (getaddrinfo(Desthost, Destport, &hints, &res) != 0) {
+      perror("getaddrinfo() failed");
+      return -1;
+  }
+
+
+  // Use the address info returned by getaddrinfo to create the socket
+  int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (sockfd < 0) {
-    perror("socket() failed");
-    return -1;
+      perror("socket() failed");
+      freeaddrinfo(res); // Free the linked list
+      return -1;
+}
+
+  if (res->ai_family == AF_INET6) {  // If it's an IPv6 socket
+      int no = 0;
+      if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)) < 0) {
+          perror("setsockopt() IPV6_V6ONLY failed");
+          freeaddrinfo(res);
+          close(sockfd);
+          return -1;
+      }
   }
 
-  int opt = 1;
-  if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) 
-  {
-    perror("setsockopt() failed");
-    return -1;
-  }
-
-    // Step 3: Bind the socket to an IP address and port
-    struct sockaddr_in address;
-    address.sin_family = AF_UNSPEC;
-    address.sin_addr.s_addr = INADDR_ANY; // Bind to all available interfaces
-    address.sin_port = htons(port); // Convert port number to network byte order
-
-    if (bind(sockfd, (struct sockaddr *)&address, sizeof(address)) == -1) {
-        perror("Bind failed");
-        close(sockfd);
-        return -1;
+    int opt = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) 
+    {
+      perror("setsockopt() failed");
+      freeaddrinfo(res);
+      close(sockfd);
+      return -1;
     }
-    printf("Socket bound to port %d successfully.\n", port);
+
+  // Bind the socket to the address and port returned by getaddrinfo
+  if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+      perror("Bind failed");
+      freeaddrinfo(res);
+      close(sockfd);
+      return -1;
+  }
+
+  freeaddrinfo(res); // Free the linked list after binding
 
     // Step 4: Listen for incoming connections
     if (listen(sockfd, 5) < 0) {
@@ -187,14 +211,21 @@ int main(int argc, char *argv[]){
       // Read the response
       char buf[BUFFER_SIZE];
       memset(buf, 0, sizeof buf);
-      int numbytes;
 
-      if ((numbytes = recv(client_sockfd, buf, BUFFER_SIZE - 1, 0)) == -1) {
-          perror("recv");
+      int numbytes = recv(client_sockfd, buf, BUFFER_SIZE - 1, 0);
+      if (numbytes == -1) {
+          if (errno == EWOULDBLOCK || errno == EAGAIN) {
+              // Timeout occurred
+              const char* timeout_msg = "ERROR TO\n";
+              send(client_sockfd, timeout_msg, strlen(timeout_msg), 0);
+              printf("Client timed out. Sent timeout message.\n");
+          } else {
+              perror("recv failed");
+          }
           close(client_sockfd);
-          close(sockfd);
-          return -1;
+          continue;  // Go back to listening for new connections
       }
+
 
       if (strstr(buf, "OK\n") == NULL) {
           printf("ERROR: Expected 'OK\\n' response\n");
@@ -224,12 +255,20 @@ int main(int argc, char *argv[]){
       }
 
       // Receive the client's response
-      memset(buf, 0, sizeof buf);
-      if ((numbytes = recv(client_sockfd, buf, BUFFER_SIZE - 1, 0)) == -1) {
-          perror("recv");
+      memset(buf, 0, sizeof(buf));
+      numbytes = recv(client_sockfd, buf, BUFFER_SIZE - 1, 0);
+
+      if (numbytes == -1) {
+          if (errno == EWOULDBLOCK || errno == EAGAIN) {
+              // Timeout occurred
+              const char* timeout_msg = "ERROR TO\n";
+              send(client_sockfd, timeout_msg, strlen(timeout_msg), 0);
+              printf("Client timed out. Sent timeout message.\n");
+          } else {
+              perror("recv failed");
+          }
           close(client_sockfd);
-          close(sockfd);
-          return -1;
+          continue;  // Go back to listening for new connections
       }
 
       // Check the client's response
