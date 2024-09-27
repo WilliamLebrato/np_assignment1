@@ -101,8 +101,6 @@ const char* check_task(struct assignment *task, char *client_response) {
     }
 }
 
-
-
 int main(int argc, char *argv[]){
   
   /*
@@ -122,7 +120,7 @@ int main(int argc, char *argv[]){
 #endif
 
 // Implement the socket
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  int sockfd = socket(AF_UNSPEC,SOCK_STREAM, 0);
   if (sockfd < 0) {
     perror("socket() failed");
     return -1;
@@ -165,6 +163,18 @@ int main(int argc, char *argv[]){
           close(sockfd);
           return -1;
       }
+        // Set a 5-second timeout for receiving data from the client
+      struct timeval timeout;
+      timeout.tv_sec = 5;  // 5 seconds timeout
+      timeout.tv_usec = 0;
+
+      if (setsockopt(client_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) < 0) {
+          perror("setsockopt() for timeout failed");
+          close(client_sockfd);
+          close(sockfd);
+          return -1;
+      }
+
 
       const char *protocol_msg = "TEXT TCP 1.0\n\n";
       if (send(client_sockfd, protocol_msg, strlen(protocol_msg), 0) < 0) {
