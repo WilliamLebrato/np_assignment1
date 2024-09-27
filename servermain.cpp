@@ -185,7 +185,7 @@ int main(int argc, char *argv[]){
       if (client_sockfd < 0) {
           perror("Accept failed");
           close(sockfd);
-          return -1;
+          continue;
       }
         // Set a 5-second timeout for receiving data from the client
       struct timeval timeout;
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]){
           perror("setsockopt() for timeout failed");
           close(client_sockfd);
           close(sockfd);
-          return -1;
+          continue;
       }
 
 
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]){
           perror("Send failed");
           close(client_sockfd);
           close(sockfd);
-          return -1;
+          continue;
   }
 
       // Read the response
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]){
           printf("ERROR: Expected 'OK\\n' response\n");
           close(client_sockfd);
           close(sockfd);
-          return -1;
+          continue;
       }
 
       // Generate a random assignment
@@ -251,7 +251,7 @@ int main(int argc, char *argv[]){
           perror("Send failed");
           close(client_sockfd);
           close(sockfd);
-          return -1;
+          continue;
       }
 
       // Receive the client's response
@@ -279,7 +279,7 @@ int main(int argc, char *argv[]){
           perror("Send failed");
           close(client_sockfd);
           close(sockfd);
-          return -1;
+          continue;
       }
 
       // Close the client socket
